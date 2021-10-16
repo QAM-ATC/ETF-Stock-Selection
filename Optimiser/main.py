@@ -161,3 +161,24 @@ class Constraint:
             result.append(constraint)
 
         return result
+
+    def weights(weights: np.array):
+        """Constraint to ensure that the weights in our portfolio always sum to one.
+
+        Parameters
+        ----------
+        weights : np.array
+            weights of our portfolio
+
+        Returns
+        -------
+        list
+            Returns a list containing a dictionary of our constraint
+        """
+
+        constraint = [{
+                    'type': 'eq',
+                    'fun': lambda weights: np.sum(weights) - 1
+                        }]
+
+        return constraint
