@@ -94,3 +94,70 @@ class ObjectiveFunction:
         result = qr.statistics.annualize.annualised_volatility(portfolio_returns, **kwargs)
 
         return result
+
+class Constraint:
+
+    def industry_constraints(weights: np.array, industries: dict, tickers: list, industryWeights: dict):
+        """This constraint function allocates weights to specific sectors by providing a maxWeight for each sector.
+        It returns a list of constraints for each sector
+
+        Parameters
+        ----------
+        weights : np.array
+            weights of our portfolio
+        industries : dict
+            dictionary with list of tickers as values, the key is the industry and the values are the tickers in that industry
+        tickers : list
+            all possible tickers in our portfolio, used to verify weight indices
+        industryWeights : dict
+            dictionary with industry as key and value is the max weight to allocate to that industry. keys must be the same as 'industries' dictionary
+
+        Returns
+        -------
+        list
+            Returns a list of constraints for each sector
+        """
+
+        def _industry_constraints_(weights: np.array, industry: list, tickers: list, maxWeight: float):
+            """Inner function to enforce the industry constraint for each industry
+
+            Parameters
+            ----------
+            weights : np.array
+                weights of our portfolio
+            industry : list
+                tickers present in a given industry in the form of a list
+            tickers : list
+                all possible tickers in our portfolio, used to verify weight indices
+            maxWeight : float
+                maximum possible weight to allocate to the current industry
+
+            Returns
+            -------
+            float
+                Returns the constraint value which must be non-negative
+            """
+
+            weightsInIndustry = []
+
+            for idx, firm in enumerate(tickers):
+                if firm in industry:
+                    weightsInIndustry.append(idx)
+
+            return (maxWeight - np.sum([weights[i] for i in weightsInIndustry]))
+
+        result = []
+
+        for industry in industries.keys():
+
+            args = (industry, tickers, industryWeights[industry])
+
+            constraint = {
+                        'type': 'ineq',
+                        'fun': _industry_constraints_,
+                        'args': args
+                        }
+
+            result.append(constraint)
+
+        return result
