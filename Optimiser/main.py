@@ -121,7 +121,7 @@ class Constraint:
         """
 
         @staticmethod
-        def _industry_constraints_(weights: np.array, industry: list, tickers: list, maxWeight: float):
+        def _industry_constraints_(weights: np.array, weightsInIndustry: list, maxWeight: float):
             """Inner function to enforce the industry constraint for each industry
 
             Parameters
@@ -141,19 +141,18 @@ class Constraint:
                 Returns the constraint value which must be non-negative
             """
 
-            weightsInIndustry = []
-
-            for idx, firm in enumerate(tickers):
-                if firm in industry:
-                    weightsInIndustry.append(idx)
-
             return (maxWeight - np.sum([weights[i] for i in weightsInIndustry]))
 
         result = []
 
-        for industry in industries.keys():
+        for industry, firms in industries.items():
 
-            args = (industry, tickers, industryWeights[industry])
+            weightsInIndustry = []
+            for idx, firm in enumerate(tickers):
+                if firm in firms:
+                    weightsInIndustry.append(idx)
+
+            args = (weightsInIndustry, industryWeights[industry])
 
             constraint = {
                         'type': 'ineq',
