@@ -40,6 +40,7 @@ class objectiveFunction:
             numpy array of our weights that will be optimised
         prices : pd.DataFrame
             Dataframe of prices of our tickers with dates as the index
+            
         Returns
         -------
         float
