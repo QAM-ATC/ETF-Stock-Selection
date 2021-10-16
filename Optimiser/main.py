@@ -69,5 +69,6 @@ class objectiveFunction:
 
         portfolio = (weights * prices).sum(axis=1)
         result = -qr.statistics.financial_ratios.sortino_ratio(portfolio)
+        result = -qr.statistics.financial_ratios.sortino_ratio(portfolio, **kwargs)
 
         return result
