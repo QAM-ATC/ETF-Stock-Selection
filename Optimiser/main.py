@@ -27,9 +27,6 @@ class ObjectiveFunction:
         portfolio = (prices * weights).sum(axis=1)
         result = -qr.statistics.financial_ratios.sharpe_ratio(portfolio, **kwargs)
 
-        if isinstance(result, np.array):
-            result = result[0]
-
         return result
 
     @staticmethod
