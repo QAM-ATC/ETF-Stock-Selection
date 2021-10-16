@@ -30,3 +30,22 @@ class objectiveFunction:
             result = result[0]
 
         return result
+
+    def minimum_drawdown(weights: np.array, prices: pd.DataFrame):
+        """Objective function that returns the maximum drawdown, given a price dataframe along with weights.
+
+        Parameters
+        ----------
+        weights : np.array
+            numpy array of our weights that will be optimised
+        prices : pd.DataFrame
+            Dataframe of prices of our tickers with dates as the index
+        Returns
+        -------
+        float
+            Returns the maximum drawdown of the portfolio
+        """
+        portfolio = (prices * weights).sum(axis=1)
+        result = qr.statistics.stats.maximum_drawdown(portfolio)
+
+        return result
