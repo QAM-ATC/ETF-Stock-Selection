@@ -3,6 +3,9 @@ import numpy as np
 import scipy.optimize as opt
 import quant_risk as qr
 import pandas as pd
+from pandas.tseries.offsets import QuarterEnd, BusinessDay
+from tqdm import tqdm
+import datetime as dt
 
 class ObjectiveFunction:
 
@@ -201,28 +204,64 @@ class Optimisation(ObjectiveFunction, Constraint):
 
             obj_funcs = [method for method in dir(ObjectiveFunction) if method.startswith('__') is False]
 
-            print("Which of the following default objective functions would you like to use: ")
+            # print("Which of the following default objective functions would you like to use: ")
 
-            for idx, func in enumerate(obj_funcs):
-                print(f" {idx}. {func}")
+            # for idx, func in enumerate(obj_funcs):
+            #     print(f" {idx}. {func}")
 
-            input_func = int(input("Please enter the function number you would like to choose: "))
+            # input_func = int(input("Please enter the function number you would like to choose: "))
 
-            self.objective_function = eval(f"ObjectiveFunction.{obj_funcs[input_func]}")
+            # self.objective_function = eval(f"ObjectiveFunction.{obj_funcs[input_func]}")
+            self.objective_function = ObjectiveFunction.sharpe
 
         weights_constraint = Constraint.weights_constraint()
 
         self.initial_guess = np.random.random(size=len(self.prices.columns))
         self.initial_guess /= sum(self.initial_guess)
 
-        industry_constraint = Constraint.industry_constraints(**kwargs)
+        # industry_constraint = Constraint.industry_constraints(**kwargs)
 
         self.constraint.extend(weights_constraint)
-        self.constraint.extend(industry_constraint)
+        # self.constraint.extend(industry_constraint)
 
         args = (self.prices)
 
         result = opt.minimize(self.objective_function, self.initial_guess, args = args, method = 'SLSQP',
-                    bounds=self.bounds, options={'disp': True})
+                    bounds=self.bounds, options={'disp': False})
 
         return result
+class RollingOptimisation(Optimisation):
+
+    def __init__(self, prices: pd.DataFrame, objective_function = None, constraint: list = [], rollback: int = 63):
+
+        self.objective_function = objective_function
+        self.constraint = constraint
+        self.prices = prices
+        self.rollback = rollback
+
+    def backtest(self, **kwargs):
+
+        first = True
+        pastweights = []
+        dates = pd.date_range(start=self.prices.index[0], end=dt.date.today(), freq='B').tolist()
+        empty_dataframe = pd.DataFrame(index=dates)
+        self.prices = pd.concat([self.prices, empty_dataframe], axis=1, join='outer').ffill()
+
+        for date in tqdm(dates[self.rollback:]):
+
+            train = self.prices.loc[date - BusinessDay(self.rollback): date - BusinessDay(1), :]
+            test = pd.DataFrame(self.prices.loc[date, :]).T
+
+            weights = Optimisation(train, self.objective_function, self.constraint).optimise()['x']
+            pastweights.append(weights)
+
+            if first:
+
+                portfolio = pd.DataFrame((test*weights).sum(axis=1) / (test*weights).sum(axis=1).iloc[0])
+                portfolio.columns = ['Portfolio']
+                first = False
+        pastweights = pd.DataFrame(pastweights, index=dates[self.rollback:])
+        pastweights.columns = self.prices.columns
+
+        return portfolio, pastweights
+        # Update daily and take previous 3m data
