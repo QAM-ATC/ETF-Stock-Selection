@@ -4,7 +4,7 @@ import scipy.optimize as opt
 import quant_risk as qr
 import pandas as pd
 
-class objectiveFunction:
+class ObjectiveFunction:
 
     def sharpe(weights: np.array, prices: pd.DataFrame, **kwargs):
         """Objective function that returns the negative sharpe ratio (since it is a minimisation problem), given a price dataframe.
