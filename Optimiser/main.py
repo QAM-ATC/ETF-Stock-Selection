@@ -189,6 +189,20 @@ class Constraint:
 
         return constraint
 
+    @staticmethod
+    def turnover_constraint(past_weights, **kwargs):
+
+        constraint = [{
+            'type': 'ineq',
+            'fun': lambda weights, past_weights: 0.3 - np.sum([(abs(weight[i] - past_weights[i])
+                                             for i in range(len(weights)))
+                                             ]),
+            'args': (past_weights)
+                }]
+
+        return constraint
+
+
 class Optimisation(ObjectiveFunction, Constraint):
 
     def __init__(self, prices: pd.DataFrame, objective_function = None, constraint: list = []):
@@ -215,6 +229,7 @@ class Optimisation(ObjectiveFunction, Constraint):
             self.objective_function = ObjectiveFunction.sharpe
 
         weights_constraint = Constraint.weights_constraint()
+        turnover_constraint = Constraint.turnover_constraint(**kwargs)
 
         self.initial_guess = np.random.random(size=len(self.prices.columns))
         self.initial_guess /= sum(self.initial_guess)
@@ -223,13 +238,14 @@ class Optimisation(ObjectiveFunction, Constraint):
 
         self.constraint.extend(weights_constraint)
         # self.constraint.extend(industry_constraint)
-
+        self.constraint.extend(turnover_constraint)
         args = (self.prices)
 
         result = opt.minimize(self.objective_function, self.initial_guess, args = args, method = 'SLSQP',
                     bounds=self.bounds, options={'disp': False})
 
         return result
+
 class RollingOptimisation(Optimisation):
 
     def __init__(self, prices: pd.DataFrame, objective_function = None, constraint: list = [], rollback: int = 63):
@@ -252,7 +268,12 @@ class RollingOptimisation(Optimisation):
             train = self.prices.loc[date - BusinessDay(self.rollback): date - BusinessDay(1), :]
             test = pd.DataFrame(self.prices.loc[date, :]).T
 
-            weights = Optimisation(train, self.objective_function, self.constraint).optimise()['x']
+            if first:
+                weights = Optimisation(train, self.objective_function, self.constraint).optimise(
+                                                past_weights=[1/len(self.prices.columns)]*len(self.prices.columns))['x']
+            else:
+                weights = Optimisation(train, self.objective_function, self.constraint).optimise(
+                                                                past_weights=pastweights[-1])['x']
             pastweights.append(weights)
 
             if first:
