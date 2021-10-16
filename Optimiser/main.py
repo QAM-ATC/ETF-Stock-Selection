@@ -162,7 +162,7 @@ class Constraint:
 
         return result
 
-    def weights(weights: np.array):
+    def weights_constraint(weights: np.array):
         """Constraint to ensure that the weights in our portfolio always sum to one.
 
         Parameters
