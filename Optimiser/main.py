@@ -102,7 +102,7 @@ class ObjectiveFunction:
 class Constraint:
 
     @staticmethod
-    def industry_constraints(weights: np.array, industries: dict, tickers: list, industryWeights: dict):
+    def industry_constraints(industries: dict, tickers: list, industryWeights: dict):
         """This constraint function allocates weights to specific sectors by providing a maxWeight for each sector.
         It returns a list of constraints for each sector
 
@@ -169,7 +169,7 @@ class Constraint:
         return result
 
     @staticmethod
-    def weights_constraint(weights: np.array):
+    def weights_constraint():
         """Constraint to ensure that the weights in our portfolio always sum to one.
 
         Parameters
