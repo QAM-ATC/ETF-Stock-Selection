@@ -6,6 +6,7 @@ import pandas as pd
 
 class ObjectiveFunction:
 
+    @staticmethod
     def sharpe(weights: np.array, prices: pd.DataFrame, **kwargs):
         """Objective function that returns the negative sharpe ratio (since it is a minimisation problem), given a price dataframe.
         Additional arguements can be provided such as riskFreeRate and periodsPerYear to account for annualisation etc.
@@ -31,6 +32,7 @@ class ObjectiveFunction:
 
         return result
 
+    @staticmethod
     def minimum_drawdown(weights: np.array, prices: pd.DataFrame):
         """Objective function that returns the maximum drawdown, given a price dataframe along with weights.
 
@@ -51,6 +53,7 @@ class ObjectiveFunction:
 
         return result
 
+    @staticmethod
     def sortino(weights: np.array, prices: pd.DataFrame, **kwargs):
         """Objective function that returns the negative sortino ratio (since it is a minimisation problem), given a price dataframe.
         Additional arguements can be provided such as riskFreeRate, periodsPerYear, reqReturn to account for annualisation etc.
@@ -73,6 +76,7 @@ class ObjectiveFunction:
 
         return result
 
+    @staticmethod
     def minimum_volatility(weights: np.array, prices: pd.DataFrame, **kwargs):
         """Objective function that minimises the annualised volatility of the portfolio. Can take additional arguements such as periodsPerYear for annualisation.
 
@@ -97,6 +101,7 @@ class ObjectiveFunction:
 
 class Constraint:
 
+    @staticmethod
     def industry_constraints(weights: np.array, industries: dict, tickers: list, industryWeights: dict):
         """This constraint function allocates weights to specific sectors by providing a maxWeight for each sector.
         It returns a list of constraints for each sector
@@ -118,6 +123,7 @@ class Constraint:
             Returns a list of constraints for each sector
         """
 
+        @staticmethod
         def _industry_constraints_(weights: np.array, industry: list, tickers: list, maxWeight: float):
             """Inner function to enforce the industry constraint for each industry
 
@@ -162,6 +168,7 @@ class Constraint:
 
         return result
 
+    @staticmethod
     def weights_constraint(weights: np.array):
         """Constraint to ensure that the weights in our portfolio always sum to one.
 
