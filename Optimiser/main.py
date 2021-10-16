@@ -211,11 +211,15 @@ class Optimisation(ObjectiveFunction, Constraint):
             self.objective_function = eval(f"ObjectiveFunction.{obj_funcs[input_func]}")
 
         weights_constraint = Constraint.weights_constraint()
-        self.initial_guess = [[1/len(self.prices.columns)] * len(self.prices.columns)]
 
-        # industry_constraint = Constraint.industry_constraints()
+        self.initial_guess = np.random.random(size=len(self.prices.columns))
+        self.initial_guess /= sum(self.initial_guess)
+
+        industry_constraint = Constraint.industry_constraints(**kwargs)
 
         self.constraint.extend(weights_constraint)
+        self.constraint.extend(industry_constraint)
+
         args = (self.prices)
 
         result = opt.minimize(self.objective_function, self.initial_guess, args = args, method = 'SLSQP',
