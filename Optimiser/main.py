@@ -46,7 +46,7 @@ class ObjectiveFunction:
             Returns the maximum drawdown of the portfolio
         """
         portfolio = (prices * weights).sum(axis=1)
-        result = qr.statistics.stats.maximum_drawdown(portfolio)
+        result = -qr.statistics.stats.maximum_drawdown(portfolio)
 
         return result
 
