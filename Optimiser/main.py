@@ -40,7 +40,7 @@ class objectiveFunction:
             numpy array of our weights that will be optimised
         prices : pd.DataFrame
             Dataframe of prices of our tickers with dates as the index
-            
+
         Returns
         -------
         float
@@ -69,7 +69,28 @@ class objectiveFunction:
         """
 
         portfolio = (weights * prices).sum(axis=1)
-        result = -qr.statistics.financial_ratios.sortino_ratio(portfolio)
         result = -qr.statistics.financial_ratios.sortino_ratio(portfolio, **kwargs)
+
+        return result
+
+    def minimum_volatility(weights: np.array, prices: pd.DataFrame, **kwargs):
+        """Objective function that minimises the annualised volatility of the portfolio. Can take additional arguements such as periodsPerYear for annualisation.
+
+        Parameters
+        ----------
+        weights : np.array
+            numpy array of our weights that will be optimised
+        prices : pd.DataFrame
+            Dataframe of prices of our tickers with dates as the index
+
+        Returns
+        -------
+        float
+            Returns the annualised volatility of the portfolio
+        """
+
+        portfolio = (weights * prices).sum(axis=1)
+        portfolio_returns = portfolio.pct_change().dropna()
+        result = qr.statistics.annualize.annualised_volatility(portfolio_returns, **kwargs)
 
         return result
