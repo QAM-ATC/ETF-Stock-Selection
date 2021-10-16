@@ -49,3 +49,25 @@ class objectiveFunction:
         result = qr.statistics.stats.maximum_drawdown(portfolio)
 
         return result
+
+    def sortino(weights: np.array, prices: pd.DataFrame, **kwargs):
+        """Objective function that returns the negative sortino ratio (since it is a minimisation problem), given a price dataframe.
+        Additional arguements can be provided such as riskFreeRate, periodsPerYear, reqReturn to account for annualisation etc.
+
+        Parameters
+        ----------
+        weights : np.array
+            numpy array of our weights that will be optimised
+        prices : pd.DataFrame
+            Dataframe of prices of our tickers with dates as the index
+
+        Returns
+        -------
+        float
+            Returns the negative of the sortino ratio
+        """
+
+        portfolio = (weights * prices).sum(axis=1)
+        result = -qr.statistics.financial_ratios.sortino_ratio(portfolio)
+
+        return result
