@@ -186,3 +186,40 @@ class Constraint:
                         }]
 
         return constraint
+
+class Optimisation(ObjectiveFunction, Constraint):
+
+    def __init__(self, prices: pd.DataFrame, objective_function = None, constraint: list = []):
+
+        self.objective_function = objective_function
+        self.constraint = constraint
+        self.prices = prices
+        self.bounds = tuple((0.0, 1.0) for _ in range(len(self.prices.columns)))
+
+    def optimise(self, **kwargs):
+
+        if not self.objective_function:
+
+            obj_funcs = [method for method in dir(ObjectiveFunction) if method.startswith('__') is False]
+
+            print("Which of the following default objective functions would you like to use: ")
+
+            for idx, func in enumerate(obj_funcs):
+                print(f" {idx}. {func}")
+
+            input_func = int(input("Please enter the function number you would like to choose: "))
+
+            self.objective_function = eval(f"ObjectiveFunction.{obj_funcs[input_func]}")
+
+        weights_constraint = Constraint.weights_constraint()
+        self.initial_guess = [[1/len(self.prices.columns)] * len(self.prices.columns)]
+
+        # industry_constraint = Constraint.industry_constraints()
+
+        self.constraint.extend(weights_constraint)
+        args = (self.prices)
+
+        result = opt.minimize(self.objective_function, self.initial_guess, args = args, method = 'SLSQP',
+                    bounds=self.bounds, options={'disp': True})
+
+        return result
