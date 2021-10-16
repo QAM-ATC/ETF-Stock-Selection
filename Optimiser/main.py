@@ -226,7 +226,7 @@ class Optimisation(ObjectiveFunction, Constraint):
             # input_func = int(input("Please enter the function number you would like to choose: "))
 
             # self.objective_function = eval(f"ObjectiveFunction.{obj_funcs[input_func]}")
-            self.objective_function = ObjectiveFunction.sharpe
+            self.objective_function = ObjectiveFunction.minimum_drawdown
 
         weights_constraint = Constraint.weights_constraint()
         turnover_constraint = Constraint.turnover_constraint(**kwargs)
