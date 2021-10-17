@@ -194,7 +194,7 @@ class Constraint:
 
         constraint = [{
             'type': 'ineq',
-            'fun': lambda weights, past_weights: 0.3 - np.sum([(abs(weight[i] - past_weights[i])
+            'fun': lambda weights, past_weights: 0.5 - np.sum([(abs(weights[i] - past_weights[i])
                                              for i in range(len(weights)))
                                              ]),
             'args': (past_weights)
@@ -267,6 +267,7 @@ class RollingOptimisation(Optimisation):
 
             train = self.prices.loc[date - BusinessDay(self.rollback): date - BusinessDay(1), :]
             test = pd.DataFrame(self.prices.loc[date, :]).T
+            self.constraint = []
 
             if first:
                 weights = Optimisation(train, self.objective_function, self.constraint).optimise(
