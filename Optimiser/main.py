@@ -99,32 +99,8 @@ class ObjectiveFunction:
 
         return result
 
-class Constraint:
-
-    @staticmethod
-    def industry_constraints(industries: dict, tickers: list, industryWeights: dict):
-        """This constraint function allocates weights to specific sectors by providing a maxWeight for each sector.
-        It returns a list of constraints for each sector
-
-        Parameters
-        ----------
-        weights : np.array
-            weights of our portfolio
-        industries : dict
-            dictionary with list of tickers as values, the key is the industry and the values are the tickers in that industry
-        tickers : list
-            all possible tickers in our portfolio, used to verify weight indices
-        industryWeights : dict
-            dictionary with industry as key and value is the max weight to allocate to that industry. keys must be the same as 'industries' dictionary
-
-        Returns
-        -------
-        list
-            Returns a list of constraints for each sector
-        """
-
-        @staticmethod
-        def _industry_constraints_(weights: np.array, weightsInIndustry: list, maxWeight: float):
+class Constraints:
+    def industry_constraint(weights: np.array, weightsInIndustry: list, maxWeight: float):
             """Inner function to enforce the industry constraint for each industry
 
             Parameters
@@ -146,6 +122,36 @@ class Constraint:
 
             return (maxWeight - np.sum([weights[i] for i in weightsInIndustry]))
 
+    def weights_constraint(weights):
+        return np.sum(weights) - 1
+
+    def turnover_constraint(weights, pastWeights):
+        return 0.5 - np.sum([(abs(weights[i] - pastWeights[i]) for i in range(len(weights)))])
+
+class ConstraintWrappers:
+
+    #@staticmethod
+    def industry_constraints(industries: dict, tickers: list, industryWeights: dict):
+        """This constraint function allocates weights to specific sectors by providing a maxWeight for each sector.
+        It returns a list of constraints for each sector
+
+        Parameters
+        ----------
+        weights : np.array
+            weights of our portfolio
+        industries : dict
+            dictionary with list of tickers as values, the key is the industry and the values are the tickers in that industry
+        tickers : list
+            all possible tickers in our portfolio, used to verify weight indices
+        industryWeights : dict
+            dictionary with industry as key and value is the max weight to allocate to that industry. keys must be the same as 'industries' dictionary
+
+        Returns
+        -------
+        list
+            Returns a list of constraints for each sector
+        """
+
         result = []
 
         for industry, firms in industries.items():
@@ -159,7 +165,7 @@ class Constraint:
 
             constraint = {
                         'type': 'ineq',
-                        'fun': _industry_constraints_,
+                        'fun': Constraints.industry_constraint,
                         'args': args
                         }
 
@@ -167,7 +173,7 @@ class Constraint:
 
         return result
 
-    @staticmethod
+    #@staticmethod
     def weights_constraint():
         """Constraint to ensure that the weights in our portfolio always sum to one.
 
@@ -184,31 +190,31 @@ class Constraint:
 
         constraint = [{
                     'type': 'eq',
-                    'fun': lambda weights: np.sum(weights) - 1
+                    'fun': Constraints.weights_constraint
                         }]
 
         return constraint
 
-    @staticmethod
+    #@staticmethod
     def turnover_constraint(past_weights, **kwargs):
 
         constraint = [{
             'type': 'ineq',
-            'fun': lambda weights, past_weights: 0.5 - np.sum([(abs(weights[i] - past_weights[i])
-                                             for i in range(len(weights)))
-                                             ]),
+            'fun': Constraints.turnover_constraint,
             'args': (past_weights)
                 }]
 
         return constraint
 
 
-class Optimisation(ObjectiveFunction, Constraint):
+class Optimisation(ObjectiveFunction, ConstraintWrappers):
 
     def __init__(self, prices: pd.DataFrame, objective_function = None, constraint: list = []):
 
-        self.objective_function = objective_function
-        self.constraint = constraint
+        if objective_function is not None:
+            self.objective_function = objective_function
+        if constraint:
+            self.constraint = constraint
         self.prices = prices
         self.bounds = tuple((0.0, 1.0) for _ in range(len(self.prices.columns)))
 
@@ -217,32 +223,21 @@ class Optimisation(ObjectiveFunction, Constraint):
         if not self.objective_function:
 
             obj_funcs = [method for method in dir(ObjectiveFunction) if method.startswith('__') is False]
-
-            # print("Which of the following default objective functions would you like to use: ")
-
-            # for idx, func in enumerate(obj_funcs):
-            #     print(f" {idx}. {func}")
-
-            # input_func = int(input("Please enter the function number you would like to choose: "))
-
-            # self.objective_function = eval(f"ObjectiveFunction.{obj_funcs[input_func]}")
             self.objective_function = ObjectiveFunction.minimum_drawdown
 
-        weights_constraint = Constraint.weights_constraint()
-        turnover_constraint = Constraint.turnover_constraint(**kwargs)
+        #weights_constraint = Constraint.weights_constraint()
+        #turnover_constraint = Constraint.turnover_constraint(**kwargs)
 
         self.initial_guess = np.random.random(size=len(self.prices.columns))
         self.initial_guess /= sum(self.initial_guess)
 
-        # industry_constraint = Constraint.industry_constraints(**kwargs)
-
-        self.constraint.extend(weights_constraint)
-        # self.constraint.extend(industry_constraint)
-        self.constraint.extend(turnover_constraint)
+        #self.constraint.extend(weights_constraint)
+        #self.constraint.extend(industry_constraint)
+        #self.constraint.extend(turnover_constraint)
         args = (self.prices)
 
         result = opt.minimize(self.objective_function, self.initial_guess, args = args, method = 'SLSQP',
-                    bounds=self.bounds, options={'disp': False})
+                    bounds=self.bounds, options={'disp': False}, constraints=self.constraint)
 
         return result
 
@@ -250,31 +245,44 @@ class RollingOptimisation(Optimisation):
 
     def __init__(self, prices: pd.DataFrame, objective_function = None, constraint: list = [], rollback: int = 63):
 
-        self.objective_function = objective_function
-        self.constraint = constraint
+        if objective_function is not None:
+            self.objective_function = eval("ObjectiveFunction."+objective_function)
+        if constraint:
+            self.constraint = constraint
         self.prices = prices
         self.rollback = rollback
 
     def backtest(self, **kwargs):
 
         first = True
-        pastweights = []
         dates = pd.date_range(start=self.prices.index[0], end=dt.date.today(), freq='B').tolist()
         empty_dataframe = pd.DataFrame(index=dates)
         self.prices = pd.concat([self.prices, empty_dataframe], axis=1, join='outer').ffill()
+        pastweights = []
+        print(pastweights)
+        tickers = self.prices.columns.tolist()
 
         for date in tqdm(dates[self.rollback:]):
 
             train = self.prices.loc[date - BusinessDay(self.rollback): date - BusinessDay(1), :]
             test = pd.DataFrame(self.prices.loc[date, :]).T
-            self.constraint = []
-
+            
+            constraints = []
+            for cons in self.constraint:
+                if cons=="industry_constraints":
+                    items=ConstraintWrappers.industry_constraints(kwargs['industries'],tickers,kwargs['industryWeights'])
+                elif cons=="weights_constraint":
+                    items=ConstraintWrappers.weights_constraint()
+                elif cons=="turnover_constraint":
+                    items=ConstraintWrappers.turnover_constraint(pastweights[-1])
+                for item in items:
+                        constraints.append(item)
+            
             if first:
-                weights = Optimisation(train, self.objective_function, self.constraint).optimise(
-                                                past_weights=[1/len(self.prices.columns)]*len(self.prices.columns))['x']
+                weights = Optimisation(train, self.objective_function,constraints).optimise(past_weights = [1/len(self.prices.columns)]*len(self.prices.columns))['x']
             else:
-                weights = Optimisation(train, self.objective_function, self.constraint).optimise(
-                                                                past_weights=pastweights[-1])['x']
+                weights = Optimisation(train, self.objective_function,constraints).optimise(past_weights = pastweights[-1])['x']
+
             pastweights.append(weights)
 
             if first:
@@ -282,6 +290,7 @@ class RollingOptimisation(Optimisation):
                 portfolio = pd.DataFrame((test*weights).sum(axis=1) / (test*weights).sum(axis=1).iloc[0])
                 portfolio.columns = ['Portfolio']
                 first = False
+    
         pastweights = pd.DataFrame(pastweights, index=dates[self.rollback:])
         pastweights.columns = self.prices.columns
 
