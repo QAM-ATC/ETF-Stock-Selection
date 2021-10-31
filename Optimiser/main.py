@@ -101,16 +101,14 @@ class ObjectiveFunction:
 
 class Constraints:
     def industry_constraint(weights: np.array, weightsInIndustry: list, maxWeight: float):
-            """Inner function to enforce the industry constraint for each industry
+            """Constraint to enforce the industry constraint for each industry
 
             Parameters
             ----------
             weights : np.array
                 weights of our portfolio
-            industry : list
-                tickers present in a given industry in the form of a list
-            tickers : list
-                all possible tickers in our portfolio, used to verify weight indices
+            weightsInIndustry : list
+                weights of tickers present in industry
             maxWeight : float
                 maximum possible weight to allocate to the current industry
 
@@ -122,23 +120,46 @@ class Constraints:
 
             return (maxWeight - np.sum([weights[i] for i in weightsInIndustry]))
 
-    def weights_constraint(weights):
+    def weights_constraint(weights: np.array):
+        """Constraint to check weights add up to 1
+
+        Parameters
+        ----------
+        weights : np.array
+            Weights of the tickers
+
+        Returns
+        -------
+        float
+            Constraint value
+        """
         return np.sum(weights) - 1
 
-    def turnover_constraint(weights, pastWeights):
+    def turnover_constraint(weights: np.array, pastWeights: np.array):
+        """Constraint to check that turnover is a maximum of 50% for each ticker
+
+        Parameters
+        ----------
+        weights : np.array
+            Weights of the tickers
+        pastWeights : np.array
+            Previous weights of the tickers
+
+        Returns
+        -------
+        float
+            Constraint value
+        """
         return 0.5 - np.sum([(abs(weights[i] - pastWeights[i]) for i in range(len(weights)))])
 
 class ConstraintWrappers:
 
-    #@staticmethod
     def industry_constraints(industries: dict, tickers: list, industryWeights: dict):
         """This constraint function allocates weights to specific sectors by providing a maxWeight for each sector.
         It returns a list of constraints for each sector
 
         Parameters
         ----------
-        weights : np.array
-            weights of our portfolio
         industries : dict
             dictionary with list of tickers as values, the key is the industry and the values are the tickers in that industry
         tickers : list
@@ -173,14 +194,8 @@ class ConstraintWrappers:
 
         return result
 
-    #@staticmethod
     def weights_constraint():
         """Constraint to ensure that the weights in our portfolio always sum to one.
-
-        Parameters
-        ----------
-        weights : np.array
-            weights of our portfolio
 
         Returns
         -------
@@ -195,7 +210,6 @@ class ConstraintWrappers:
 
         return constraint
 
-    #@staticmethod
     def turnover_constraint(past_weights, **kwargs):
 
         constraint = [{
@@ -225,15 +239,9 @@ class Optimisation(ObjectiveFunction, ConstraintWrappers):
             obj_funcs = [method for method in dir(ObjectiveFunction) if method.startswith('__') is False]
             self.objective_function = ObjectiveFunction.minimum_drawdown
 
-        #weights_constraint = Constraint.weights_constraint()
-        #turnover_constraint = Constraint.turnover_constraint(**kwargs)
-
         self.initial_guess = np.random.random(size=len(self.prices.columns))
         self.initial_guess /= sum(self.initial_guess)
 
-        #self.constraint.extend(weights_constraint)
-        #self.constraint.extend(industry_constraint)
-        #self.constraint.extend(turnover_constraint)
         args = (self.prices)
 
         result = opt.minimize(self.objective_function, self.initial_guess, args = args, method = 'SLSQP',
