@@ -7,6 +7,9 @@ from pandas.tseries.offsets import QuarterEnd, BusinessDay
 from tqdm import tqdm
 import datetime as dt
 
+global count
+count = 0
+
 class ObjectiveFunction:
 
     @staticmethod
@@ -135,7 +138,7 @@ class Constraints:
         """
         return np.sum(weights) - 1
 
-    def turnover_constraint(weights: np.array, pastWeights: np.array):
+    def turnover_constraint(weights: np.array, pastWeights: np.array, *args, **kwargs):
         """Constraint to check that turnover is a maximum of 50% for each ticker
 
         Parameters
@@ -150,7 +153,12 @@ class Constraints:
         float
             Constraint value
         """
-        return 0.5 - np.sum([(abs(weights[i] - pastWeights[i]) for i in range(len(weights)))])
+
+        MAX_TURNOVER = 0.5
+        change_in_portfolio = MAX_TURNOVER - np.sum([abs(weights[i] - pastWeights[i]) for i in range(len(weights))])
+
+
+        return change_in_portfolio
 
 class ConstraintWrappers:
 
@@ -215,7 +223,7 @@ class ConstraintWrappers:
         constraint = [{
             'type': 'ineq',
             'fun': Constraints.turnover_constraint,
-            'args': (past_weights)
+            'args': ([past_weights])
                 }]
 
         return constraint
@@ -267,40 +275,41 @@ class RollingOptimisation(Optimisation):
         empty_dataframe = pd.DataFrame(index=dates)
         self.prices = pd.concat([self.prices, empty_dataframe], axis=1, join='outer').ffill()
         pastweights = []
-        print(pastweights)
+
         tickers = self.prices.columns.tolist()
 
         for date in tqdm(dates[self.rollback:]):
 
             train = self.prices.loc[date - BusinessDay(self.rollback): date - BusinessDay(1), :]
             test = pd.DataFrame(self.prices.loc[date, :]).T
-            
+
             constraints = []
             for cons in self.constraint:
                 if cons=="industry_constraints":
                     items=ConstraintWrappers.industry_constraints(kwargs['industries'],tickers,kwargs['industryWeights'])
                 elif cons=="weights_constraint":
                     items=ConstraintWrappers.weights_constraint()
-                elif cons=="turnover_constraint":
+                elif cons=="turnover_constraint" and first==False:
                     items=ConstraintWrappers.turnover_constraint(pastweights[-1])
                 for item in items:
                         constraints.append(item)
-            
-            if first:
-                weights = Optimisation(train, self.objective_function,constraints).optimise(past_weights = [1/len(self.prices.columns)]*len(self.prices.columns))['x']
-            else:
-                weights = Optimisation(train, self.objective_function,constraints).optimise(past_weights = pastweights[-1])['x']
 
+            if first:
+                weights = Optimisation(train, self.objective_function,constraints).optimise()['x']
+                first = False
+
+            else:
+                weights = Optimisation(train, self.objective_function,constraints).optimise()['x']
+                
             pastweights.append(weights)
 
-            if first:
+            # if first:
 
-                portfolio = pd.DataFrame((test*weights).sum(axis=1) / (test*weights).sum(axis=1).iloc[0])
-                portfolio.columns = ['Portfolio']
-                first = False
-    
+            #     portfolio = pd.DataFrame((test*weights).sum(axis=1) / (test*weights).sum(axis=1).iloc[0])
+            #     portfolio.columns = ['Portfolio']
+            #     first = False
+
         pastweights = pd.DataFrame(pastweights, index=dates[self.rollback:])
         pastweights.columns = self.prices.columns
 
-        return portfolio, pastweights
-        # Update daily and take previous 3m data
+        return pastweights
